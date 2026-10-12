@@ -237,6 +237,27 @@ jobs:
         env:
           EVS_ACCOUNT_NAME: ${{ startsWith(github.ref, 'refs/tags/') && secrets.EVS_ACCOUNT_NAME || '' }}
           EVS_PASSWD: ${{ startsWith(github.ref, 'refs/tags/') && secrets.EVS_PASSWD || '' }}
+      - name: Repackage AppImage for latest runtime
+        if: matrix.os == 'linux'
+        run: |
+          appimage_name="Sidra-${{ matrix.os }}-${{ matrix.arch }}.AppImage"
+          appimage_name_f2="Sidra-${{ matrix.os }}=${{ matrix.arch }}-fuse2.AppImage"
+          
+          # Download appimagetool
+          appimagetool_release='appimage_tool-${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}.AppImage'
+          
+          gh release download --repo 'Appimage/appimagetool' -p "${appimagetool_release}"
+          mv "${appimagetool_release}" appimagetool.AppImage
+          chmod +x appimagetool.AppImage
+          
+          # Fix appimage
+          mv "${appimage_name}" "${appimage_name_f2}"
+          chmod +x "${appimage_name_f2}"
+          "${appimage_name_f2}" --appimage-extract
+          ./appimagetool.AppImage squashfs-root "${appimage_name}"
+          
+          rm "${appimage_name_f2}" "${appimagetool.AppImage}"
+
       # Snapcraft host mode needs root, so this cannot join the step above:
       # that would run every Linux target, and EVS signing, as root.
       - name: Build snap
